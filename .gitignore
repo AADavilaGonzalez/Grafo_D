@@ -1,3 +1,4 @@
 *
 !.gitignore
+!README.md
 !grafo_d.h

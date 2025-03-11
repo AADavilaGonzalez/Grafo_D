@@ -317,11 +317,21 @@ static void grafo_d_elminar_arista(Grafo_D* grafo, Arista* ar) {
 
 
 /*------------------------------Operaciones sobre el grafo--------------------------------*/
-/*
 static void grafo_d_print(Grafo_D* grafo) {
-    printf("%d")
+    printf("G: %p\n", grafo);
+    Nodo_V* vptr=grafo->lista_ady;
+    while(vptr!=NULL) {
+        printf("*V:%p", &(vptr->vt));
+        Nodo_A* aptr=vptr->lista_ady;
+        while(aptr!=NULL) {
+            printf(" -> A:%p", &(aptr->ar));
+            aptr=aptr->sig;
+        }
+        printf("\n");
+        vptr=vptr->sig;
+    }
+    return;
 }
-*/
 
 static Arista** grafo_d_generar_mat_ady(Grafo_D* grafo);
 

@@ -2,3 +2,7 @@
 !.gitignore
 !README.md
 !grafo_d.h
+!grafos_pte1/
+!grafos_pte1/lista_s.h
+!grafos_pte1/matriz_nueva.c
+!grafos_pte1/matriz_vieja.c

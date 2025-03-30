@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <math.h>
 
 typedef struct {
     char nombre[32];
@@ -12,21 +13,11 @@ typedef struct {
     double longitud;
 } Carretera;
 
-#define Vertice Ciudad
-#define Arista Carretera
+#define STRUCT_VERTICE Ciudad
+#define STRUCT_ARISTA Carretera
+#define peso_t double
+#define PESO_NO_ARISTA HUGE_VAL
 #include "grafo_d.h"
-
-bool cmp_ciudad(Ciudad* c1, Ciudad* c2) {
-    if(strcmp(c1->nombre,c2->nombre)==0
-        && c1->poblacion==c2->poblacion) return true;
-    return false;
-}
-
-bool cmp_carretera(Carretera* c1, Carretera* c2) {
-    if(strcmp(c1->nombre, c2->nombre)==0
-        && c1->longitud==c2->longitud) return true;
-    return false;
-}
 
 double calc_distancia(Carretera* c) {
     return c->longitud;
@@ -48,7 +39,8 @@ void camino_print(Camino_D* camino) {
 }
 
 int main(void) {
-    Grafo_D* grafo = grafo_d_crear(cmp_ciudad, cmp_carretera, calc_distancia);
+    Grafo_D* grafo = grafo_d_crear();
+    grafo_d_set_calc_peso(grafo, calc_distancia);
     
     const Vertice* monterrey = grafo_d_insertar_vertice(grafo, (Ciudad){"Monterrey", 5322177});
     const Vertice* saltillo = grafo_d_insertar_vertice(grafo, (Ciudad){"Salitillo",  879958});

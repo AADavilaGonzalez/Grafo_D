@@ -5,9 +5,32 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <math.h>
+#include <limits.h>
+#include <assert.h>
 
 /*------------------------Macros y Customizacion de la Libreria------------------------*/
+#if defined(STRUCT_VERTICE) && defined(DATO_VERTICE)
+#error "Defina exlusivamente STRUCT_VERTICE o DATO_VERTICE no ambos"
+#endif
+
+#ifdef STRUCT_VERTICE
+#define Vertice STRUCT_VERTICE
+#define cmp_vt_default NULL
+#endif
+
+#ifdef STRUCT_ARISTA
+#define Arista STRUCT_ARISTA
+#define cmp_ar_default NULL
+#endif
+
+#ifdef DATO_VERTICE
+#define Vertice DATO_VERTICE
+#endif
+
+#ifdef DATO_ARISTA
+#define Arista DATO_ARISTA
+#endif
+
 #ifndef Vertice
 #define Vertice int
 #endif
@@ -17,13 +40,26 @@
 #endif
 
 #ifndef peso_t
-    #define peso_t double
-    #define PESO_NO_ARISTA HUGE_VAL
-#else
-    #ifndef PESO_NO_ARISTA
-    #error "Defina la MACRO PESO_NO_ARISTA para el peso_t definido" 
-    #endif
+#define peso_t int
+#define PESO_NO_ARISTA INT_MAX
 #endif
+    
+#ifndef PESO_NO_ARISTA
+#error "Defina la MACRO PESO_NO_ARISTA para el peso_t definido" 
+#endif
+
+#ifndef STRUCT_VERTICE
+static bool _grafo_d_cmp_vt_default(Vertice* v1, Vertice* v2) {return *v1==*v2;}
+#define cmp_vt_default _grafo_d_cmp_vt_default
+#endif
+
+#ifndef STRUCT_ARISTA
+static bool _grafo_d_cmp_ar_default(Arista* a1, Arista* a2) {return *a1==*a2;}
+#define cmp_ar_default _grafo_d_cmp_ar_default
+#endif
+
+static peso_t _grafo_d_calc_peso_default(Arista* arista) {return (peso_t)1;}
+#define calc_peso_default _grafo_d_calc_peso_default
 
 /*-----------------------Definicion de los tipos de datos internos---------------------*/
 
@@ -67,26 +103,59 @@ typedef struct grafo_d {
 
 /*---------------------------Operaciones basicas del grafo------------------------------*/
 
-/*  Crear un grafo vacio para empezar a realizar operaciones
-    El grafo debe contar con algunas funciones para realizar algunas operaciones
-    bool (*cmp_vt)(Vertice*, Vertice*) comparar si dos vertices son iguales
-    bool (*cmp_ar)(Arista*, Arista*) comparar sis dos aristas son iguales
-    peso_t (*calc_peso)(Arista*) regresa el peso de una arista
+/*  Crear un grafo vacio para empezar a realizar operaciones, algunas funciones requieren
+    que el grafo tenga asociado un comportamineto en particular, mediante las funciones
+    grafo_d_set_cmp_vt(), grafo_d_set_cmp_ar() y grafo_d_set_calc_peso() 
 */
-static Grafo_D* grafo_d_crear(bool (*cmp_vt)(Vertice*, Vertice*),
-    bool (*cmp_ar)(Arista*, Arista*), peso_t (*calc_peso)(Arista*)) {
-    
+static Grafo_D* grafo_d_crear(void) {
     Grafo_D* grafo = (Grafo_D*)malloc(sizeof(Grafo_D));
     if(!grafo) return NULL;
     grafo->lista_ady=NULL;
     grafo->lista_fin=NULL;
     grafo->orden=0;
     grafo->tamano=0;
-    grafo->cmp_vt=cmp_vt;
-    grafo->cmp_ar=cmp_ar;
-    grafo->calc_peso=calc_peso;
+    grafo->cmp_vt=cmp_vt_default;
+    grafo->cmp_ar=cmp_ar_default;
+    grafo->calc_peso=calc_peso_default;
     return grafo;
 }
+
+/*  Asigna una funcion bool cmp_vt(Vertice*, Vertice*) implementada por el usario de
+    la libreria responsable de comparar las vertices del grafo. Esta funcion se debe
+    registrarse obligatorimente cuando el usario ha definido los vertices del grafo
+    como tipo struct y se va hacer uso de la funcion grafo_d_buscar_vertice(). 
+*/
+static inline void grafo_d_set_cmp_vt(Grafo_D* grafo,
+    bool (*cmp_vt)(Vertice*, Vertice*)) {grafo->cmp_vt=cmp_vt;}
+
+/* Regresa el comportamiento de comparacion de vertices a su estado por defecto*/
+static inline void grafo_d_unset_cmp_vt(Grafo_D* grafo) {
+    grafo->cmp_vt=cmp_vt_default;}
+
+/*  Asigna una funcion bool cmp_ar(Arista*, Arista*) implementada por el usuario de
+    la libreria responsable de comparar las aristas de el grafo. Esta funcion debe
+    registrarse obligatoriamente cuando el usuario ha definido las aristas del grafo
+    como tipo struct y se va hacer uso de alguna de las funciones grafo_d_buscar_arista(s)_...()
+    a excepcion de las funciones grafo_d_buscar_arista(s)_entre_vert()
+*/
+static inline void grafo_d_set_cmp_ar(Grafo_D* grafo,
+    bool (*cmp_ar)(Arista*, Arista*)) {grafo->cmp_ar=cmp_ar;}
+
+/* Regresa el comportamiento de comparacion de aristas a sus estado por defecto*/
+static inline void grafo_d_unset_cmp_ar(Grafo_D* grafo) {
+    grafo->cmp_ar=cmp_ar_default;}
+
+/*  Asigna una funcion peso_t calc_peso(Arista*) implementada por el usuario de la
+    libreria reponsable de asignar un peso en base a la informacion de una arista del grafo
+    Esta funcion nunca es obligatoria de registrar, su comportamiento por default es regresar
+    (peso_t)1 para toda arista elemento del grafo.
+*/
+static inline void grafo_d_set_calc_peso(Grafo_D* grafo,
+    peso_t (*calc_peso)(Arista*)) {grafo->calc_peso=calc_peso;}
+
+/* Regresa el comportamiento de asignacion de pesos a su estado pro defecto*/
+static inline void grafo_d_unset_calc_peso(Grafo_D* grafo) {
+    grafo->calc_peso=calc_peso_default;}
 
 /*  Regresa si el grafo se encuentra vacio*/
 static inline bool grafo_d_isempty(const Grafo_D* grafo) {
@@ -95,8 +164,8 @@ static inline bool grafo_d_isempty(const Grafo_D* grafo) {
         && grafo->orden==0;
 }
 
-/*  Libera la memoria reservada dinamicamente para el grafo,
-    el puntero a el grafo pasado a la funcion queda invalidado despues de esta operacion
+/*  Libera la memoria reservada dinamicamente para el grafo, el puntero a el grafo
+    pasado a la funcion queda invalidado despues de esta operacion
 */
 static void grafo_d_destruir(Grafo_D* grafo) {
     Nodo_V* vptr = grafo->lista_ady, *vtmp;
@@ -145,7 +214,7 @@ static Vertice* grafo_d_insertar_vertice(Grafo_D* grafo, Vertice vt) {
     la funcion grafo->cmp_vt() regrese como verdadero
 */
 static Vertice* grafo_d_buscar_vertice(const Grafo_D* grafo, Vertice ref) {
-    if(!grafo->cmp_vt) return NULL;
+    assert(grafo->cmp_vt!=NULL);
     Nodo_V* vptr = grafo->lista_ady;
     while(vptr!=NULL) {
         if(grafo->cmp_vt(&(vptr->vt),&ref))
@@ -160,7 +229,7 @@ static Vertice* grafo_d_buscar_vertice(const Grafo_D* grafo, Vertice ref) {
     por lo que necesita ser liberado con una llamada a free()
 */
 static const Vect_V* grafo_d_buscar_vertices(const Grafo_D* grafo, Vertice ref) {
-    if(!grafo->cmp_vt) return NULL;
+    assert(grafo->cmp_vt!=NULL);
     Vect_V* vectmp = (Vect_V*)malloc(sizeof(Vect_V)+sizeof(Vertice*)*(grafo->orden));
     if(!vectmp) return NULL;
     vectmp->tamano=0;
@@ -343,7 +412,7 @@ static bool grafo_d_insertar_arpar(Grafo_D* grafo, Arista ar, const Vertice* ini
     funcion grafo->cmp_ar() regrese verdadero.
 */
 static Arista* grafo_d_buscar_arista(const Grafo_D* grafo, Arista ref) {
-    if(!grafo->cmp_ar) return NULL;
+    assert(grafo->cmp_ar!=NULL);
     Nodo_V* vptr = grafo->lista_ady;
     while(vptr!=NULL) {
         Nodo_A* aptr = vptr->lista_ady;
@@ -363,7 +432,7 @@ static Arista* grafo_d_buscar_arista(const Grafo_D* grafo, Arista ref) {
     El vector debera ser liberado mediante una llamada a la funcion free()
 */
 static const Vect_A* grafo_d_buscar_aristas(const Grafo_D* grafo, Arista ref) {
-    if(!grafo->cmp_ar) return NULL;
+    assert(grafo->cmp_ar!=NULL);
     Vect_A* vectmp = (Vect_A*)malloc(sizeof(Vect_A)+sizeof(Arista*)*(grafo->tamano));
     if(!vectmp) return NULL;
     vectmp->tamano=0;
@@ -429,7 +498,7 @@ static const Vect_A* grafo_d_buscar_aristas_entre_vert(const Grafo_D* grafo, con
     como que tenga como inicio al vertice ini y de fin al vertice fin
 */
 static Arista* grafo_d_buscar_arista_estricto(const Grafo_D* grafo, Arista ref, const Vertice* ini, const Vertice* fin) {
-    if(!grafo->cmp_ar) return NULL;
+    assert(grafo->cmp_ar!=NULL);
     Nodo_V* vptr = grafo->lista_ady;
     while(ini!=&(vptr->vt)) vptr=vptr->sig;
     Nodo_A* aptr = vptr->lista_ady;
@@ -445,7 +514,7 @@ static Arista* grafo_d_buscar_arista_estricto(const Grafo_D* grafo, Arista ref, 
     al vertice fin. El vector debera ser liberado mediante una llamada a la funcion free()
 */
 static const Vect_A* grafo_d_buscar_aristas_estricto(const Grafo_D* grafo, Arista ref, const Vertice* ini, const Vertice* fin) {
-    if(!grafo->cmp_ar) return NULL;
+    assert(grafo->cmp_ar!=NULL);
     Nodo_V* vptr=grafo->lista_ady;
     while(vptr!=NULL && ini!=&(vptr->vt)) vptr=vptr->sig;
     Vect_A* vectmp = (Vect_A*)malloc(sizeof(Vect_A)+sizeof(Arista*)*vptr->grado_s);
@@ -556,7 +625,6 @@ static Matriz_Ady* grafo_d_crear_mat_ady(const Grafo_D* grafo) {
     una llamada a la funcion free()
 */
 static Matriz_Peso* grafo_d_crear_mat_peso(const Grafo_D* grafo) {
-    if(!grafo->calc_peso) return NULL;
     Matriz_Peso* matriz_peso=(Matriz_Peso*)malloc(
         sizeof(Matriz_Peso)+sizeof(peso_t)*grafo->orden*grafo->orden
     );
@@ -642,7 +710,7 @@ typedef struct camino_d {
 } Camino_D;
 
 static inline bool es_camino_valido(Camino_D* camino) {
-    return camino->vts==NULL;
+    return camino->vts!=NULL;
 }
 
 /*  Libera la memoria reservada para el camino que se pasa como argumento

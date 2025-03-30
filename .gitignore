@@ -1,0 +1,9 @@
+*
+!.gitignore
+!README.md
+!grafo_d.h
+!ejemplos/
+!ejemplos/grafo_d.h
+!ejemplos/dijkstra.c
+!ejemplos/matriz_nueva.c
+!ejemplos/matriz_vieja.c

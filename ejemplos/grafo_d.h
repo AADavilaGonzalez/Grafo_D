@@ -8,9 +8,60 @@
 #include <limits.h>
 #include <assert.h>
 
+/*  LIBRERIA DE GRAFOS DINAMICOS GRAFO_D
+    Esta es una libreria de tipo cabezera que implementa el tipo de dato abstracto
+    Grafo_D mediante una lista de adyacencia. Su alcance es limitado ya que las operaciones
+    no estan optimizadas asimtoticamente debido este TDA fue imlementado unicamente con
+    listas enlazadas.
+
+    La libreria esta disenada para que tanto los vertices como las aristas puedan aceptar
+    un valor de tipo dato generico para su representacion asi como structs si se requiere
+    de una representacion mas compleja. Si no se especifica los tipos de dato de los
+    vertices/aristas se asume que se representaran por medio de un tipo de dato (int).
+
+    Las macros siguientes permiten la customizacion de los tipos de datos que se usaran para
+    la representar los distintos componentes/propiedades del grafo. Deben definirse antes de
+    incluir la libreria.
+    ----------------------------------------------------------------------------------------
+
+    DATO_VERTICE/STRUCT_VERTICE: Permite asignar el tipo de dato que se usara para
+    representar a cada vertice de los grafos creados con la libreria. Solo uno de estos
+    dos macros debe ser definido a la vez: DATO_VERTICE si el tipo definido es un tipo por
+    default del lenguaje (int,float,double,long, etc.) o STRUCT_VERTICE si el dato es un
+    tipo de dato struct. Ejemplos:
+    #define DATO_VERTICE double
+    #define STRUCT_VERTICE Punto, sea punto un struct definido por el usuario
+
+    DATO_VERTICE/STRUCT_VERTICE: Permite asignar el tipo de dato que se usara para
+    representar a cada arista de los grafos creados con la libreria. Solo uno de estos
+    dos macros debe ser definido a la vez: DATO_ARISTA si el tipo definido es un tipo por
+    default del lenguaje (int,float,double,long, etc.) o STRUCT_ARISTA si el dato es un
+    tipo de dato struct. Ejemplos:
+    #define DATO_ARISTA double
+    #define STRUCT_ARISTA Punto, sea punto un struct definido por el usuario
+
+    DATO_PESO: Permite asignar el tipo de dato que se usa para representar el peso de una
+    arista, la matriz de pesos sera una matriz de este tipo de dato. Si se define un DATO_PESO
+    antes de incluir la libreria, se debera definir tambien la macro PESO_NO_ARISTA. El valor
+    de DATO_PESO tiene que se un tipo por default numerico(float, int, etc). Ejemplo:
+    #define DATO_PESO double
+    #define DATO_PESO unsigned int
+
+    PESO_NO_ARISTA: Es un valor tipo DATO_PESO que sera el asignado cuando no exista una arista
+    entre dos vertices. Suele ser un valor muy alto en relacion a el tipo especificado. Ejemplo:
+    Si DATO_PESO fue definido como double entonces
+    #define PESO_NO_ARISTA HUGE_VAL
+    Si DATO_PESO fue definido como unsigned long long
+    #define PESO_NO_ARISTA ULLONG_MAX
+*/
+
 /*------------------------Macros y Customizacion de la Libreria------------------------*/
 #if defined(STRUCT_VERTICE) && defined(DATO_VERTICE)
 #error "Defina exlusivamente STRUCT_VERTICE o DATO_VERTICE no ambos"
+#endif
+
+#if defined(STRUCT_ARISTA) && defined(DATO_ARISTA)
+#error "Defina exlusivamente STRUCT_ARISTA o DATO_ARISTA no ambos"
 #endif
 
 #ifdef STRUCT_VERTICE
@@ -31,6 +82,13 @@
 #define Arista DATO_ARISTA
 #endif
 
+#ifdef DATO_PESO
+#define peso_t DATO_PESO
+#ifndef PESO_NO_ARISTA
+#error "Defina la MACRO PESO_NO_ARISTA para el DATO_PESO definido" 
+#endif 
+#endif
+
 #ifndef Vertice
 #define Vertice int
 #endif
@@ -42,10 +100,6 @@
 #ifndef peso_t
 #define peso_t int
 #define PESO_NO_ARISTA INT_MAX
-#endif
-    
-#ifndef PESO_NO_ARISTA
-#error "Defina la MACRO PESO_NO_ARISTA para el peso_t definido" 
 #endif
 
 #ifndef STRUCT_VERTICE
@@ -61,7 +115,7 @@ static bool _grafo_d_cmp_ar_default(Arista* a1, Arista* a2) {return *a1==*a2;}
 static peso_t _grafo_d_calc_peso_default(Arista* arista) {return (peso_t)1;}
 #define calc_peso_default _grafo_d_calc_peso_default
 
-/*-----------------------Definicion de los tipos de datos internos---------------------*/
+/*----------------------Definicion de los tipos de datos de interfaz---------------------*/
 
 typedef struct vect_v {
     size_t tamano;
@@ -103,7 +157,7 @@ typedef struct grafo_d {
 
 /*---------------------------Operaciones basicas del grafo------------------------------*/
 
-/*  Crear un grafo vacio para empezar a realizar operaciones, algunas funciones requieren
+/*  Crear un grafo vacio para empezar a realizar operaciones. Algunas funciones requieren
     que el grafo tenga asociado un comportamineto en particular, mediante las funciones
     grafo_d_set_cmp_vt(), grafo_d_set_cmp_ar() y grafo_d_set_calc_peso() 
 */
